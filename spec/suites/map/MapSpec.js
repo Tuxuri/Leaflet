@@ -72,10 +72,23 @@ describe("Map", function () {
 	});
 
 	describe('#getCenter', function () {
-		it ('throws if not set before', function () {
+		it('throws if not set before', function () {
 			expect(function () {
 				map.getCenter();
 			}).to.throwError();
+		});
+
+		it('returns a precise center when zoomed in after being set (#426)', function () {
+			var center = L.latLng(10, 10);
+			map.setView(center, 1);
+			map.setZoom(19);
+			expect(map.getCenter()).to.eql(center);
+		});
+
+		it('returns correct center after invalidateSize (#1919)', function () {
+			map.setView(L.latLng(10, 10), 1);
+			map.invalidateSize();
+			expect(map.getCenter()).not.to.eql(L.latLng(10, 10));
 		});
 	});
 
@@ -108,6 +121,12 @@ describe("Map", function () {
 			expect(map.getZoom()).to.be(13);
 			expect(map.getCenter().distanceTo([51.505, -0.09])).to.be.lessThan(5);
 		});
+		it("can be passed without a zoom specified", function () {
+			map.setZoom(13);
+			expect(map.setView([51.605, -0.11])).to.be(map);
+			expect(map.getZoom()).to.be(13);
+			expect(map.getCenter().distanceTo([51.605, -0.11])).to.be.lessThan(5);
+		});
 	});
 
 	describe("#getBounds", function () {
@@ -121,13 +140,23 @@ describe("Map", function () {
 	});
 
 	describe("#getMinZoom and #getMaxZoom", function () {
+		describe('#getMinZoom', function () {
+			it('returns 0 if not set by Map options or TileLayer options', function () {
+				var map = L.map(document.createElement('div'));
+				expect(map.getMinZoom()).to.be(0);
+			});
+		});
+
 		it("minZoom and maxZoom options overrides any minZoom and maxZoom set on layers", function () {
-			var c = document.createElement('div'),
-			    map = L.map(c, { minZoom: 5, maxZoom: 10 });
-			L.tileLayer("{z}{x}{y}", { minZoom:0, maxZoom: 10 }).addTo(map);
-			L.tileLayer("{z}{x}{y}", { minZoom:5, maxZoom: 15 }).addTo(map);
-			expect(map.getMinZoom()).to.be(5);
-			expect(map.getMaxZoom()).to.be(10);
+
+			var map = L.map(document.createElement('div'), {minZoom: 2, maxZoom: 20});
+
+			L.tileLayer("{z}{x}{y}", {minZoom: 4, maxZoom: 10}).addTo(map);
+			L.tileLayer("{z}{x}{y}", {minZoom: 6, maxZoom: 17}).addTo(map);
+			L.tileLayer("{z}{x}{y}", {minZoom: 0, maxZoom: 22}).addTo(map);
+
+			expect(map.getMinZoom()).to.be(2);
+			expect(map.getMaxZoom()).to.be(20);
 		});
 	});
 
@@ -182,6 +211,16 @@ describe("Map", function () {
 			map.removeLayer(layer);
 			map.setView([0, 0], 0);
 			expect(spy.called).not.to.be.ok();
+		});
+
+		it("adds the layer before firing layeradd", function (done) {
+			var layer = { onAdd: sinon.spy(), onRemove: sinon.spy() };
+			map.on('layeradd', function() {
+				expect(map.hasLayer(layer)).to.be.ok();
+				done();
+			});
+			map.setView([0, 0], 0);
+			map.addLayer(layer);
 		});
 
 		describe("When the first layer is added to a map", function () {
@@ -270,6 +309,17 @@ describe("Map", function () {
 			expect(spy.called).not.to.be.ok();
 		});
 
+		it("removes the layer before firing layerremove", function (done) {
+			var layer = { onAdd: sinon.spy(), onRemove: sinon.spy() };
+			map.on('layerremove', function() {
+				expect(map.hasLayer(layer)).not.to.be.ok();
+				done();
+			});
+			map.setView([0, 0], 0);
+			map.addLayer(layer);
+			map.removeLayer(layer);
+		});
+
 		describe("when the last tile layer on a map is removed", function () {
 			it("fires a zoomlevelschange event", function () {
 				map.whenReady(function(){
@@ -341,6 +391,61 @@ describe("Map", function () {
 			map.eachLayer(spy, map);
 
 			expect(spy.thisValues[0]).to.eql(map);
+		});
+	});
+
+	describe("#invalidateSize", function () {
+		var container,
+		    orig_width = 100;
+
+		beforeEach(function () {
+			container = map.getContainer();
+			container.style.width = orig_width + "px";
+			document.body.appendChild(container);
+			map.setView([0, 0], 0);
+			map.invalidateSize({pan: false});
+		});
+
+		afterEach(function () {
+			document.body.removeChild(container);
+		});
+
+		it("pans by the right amount when growing in 1px increments", function () {
+			container.style.width = (orig_width + 1) + "px";
+			map.invalidateSize();
+			expect(map._getMapPanePos().x).to.be(1);
+
+			container.style.width = (orig_width + 2) + "px";
+			map.invalidateSize();
+			expect(map._getMapPanePos().x).to.be(1);
+
+			container.style.width = (orig_width + 3) + "px";
+			map.invalidateSize();
+			expect(map._getMapPanePos().x).to.be(2);
+		});
+
+		it("pans by the right amount when shrinking in 1px increments", function () {
+			container.style.width = (orig_width - 1) + "px";
+			map.invalidateSize();
+			expect(map._getMapPanePos().x).to.be(0);
+
+			container.style.width = (orig_width - 2) + "px";
+			map.invalidateSize();
+			expect(map._getMapPanePos().x).to.be(-1);
+
+			container.style.width = (orig_width - 3) + "px";
+			map.invalidateSize();
+			expect(map._getMapPanePos().x).to.be(-1);
+		});
+
+		it("pans back to the original position after growing by an odd size then returning to the original size", function () {
+			container.style.width = (orig_width + 5) + "px";
+			map.invalidateSize();
+
+			container.style.width = orig_width + "px";
+			map.invalidateSize();
+
+			expect(map._getMapPanePos().x).to.be(0);
 		});
 	});
 });
