@@ -10,6 +10,14 @@ This is a collection of answers to the most frequently asked questions about Lea
 
 ## Data Providers
 
+#### The map is wrong in my neighborhood, could you fix it?
+
+Nope, but you can.
+The map you see on Leaflet examples is based on [OpenStreetMap](http://openstreetmap.org),
+a free editable map of the world.
+Signing up and editing the map there is easy,
+and the changes will be reflected on the map in a few minutes.
+
 #### What map tiles can I use with Leaflet? Is it limited to OpenStreetMap?
 
 Leaflet is provider-agnostic, meaning you can use any map provider as long as you conform to its terms of use.
@@ -18,16 +26,15 @@ You can roll your own tiles as well.
 but there are providers that use other sources.
 
 Check out [this example](http://leaflet-extras.github.io/leaflet-providers/preview/)
-with half a hundred different layers to choose from.
+with over seventy different layers to choose from.
 Popular commercial options, free up to a particular number of requests, include
 [MapBox](http://mapbox.com),
-[CloudMade](http://cloudmade.com),
-[Bing Maps](http://www.microsoft.com/maps/choose-your-binge's-maps-API.aspx) (using a [plugin](https://github.com/shramov/leaflet-plugins)),
+[Bing Maps](http://www.microsoft.com/maps/choose-your-bing-maps-API.aspx) (using a [plugin](https://github.com/shramov/leaflet-plugins)),
 [Esri ArcGIS](http://www.arcgis.com/features/maps/imagery.html) ([official plugin](https://github.com/Esri/esri-leaflet))
 and [Nokia Here](http://developer.here.com/web-experiences).
-Notable exception is [MapQuest Open](http://developer.mapquest.com/web/products/open/map), free for any number of requests.
+A notable exception is [MapQuest Open](http://developer.mapquest.com/web/products/open/map), which is free for any number of requests.
 
-Always be sure to **read terms of use** of a chosen tile provider, **know its limitations**, and **attribute it properly** in your app.
+Always be sure to **read the terms of use** of a chosen tile provider, **know its limitations**, and **attribute it properly** in your app.
 
 #### I'm looking for satellite imagery to use with my Leaflet map, any options?
 
@@ -38,9 +45,9 @@ and [MapQuest Open](http://developer.mapquest.com/web/products/open/map) provide
 
 #### I want to use Google Maps API tiles with Leaflet, can I do that?
 
-The problem with Google is that its [Terms of Use](https://developers.google.com/maps/terms?hl=ru) forbid any means of tile access other than through Google Maps API.
+The problem with Google is that its [Terms of Use](https://developers.google.com/maps/terms) forbid any means of tile access other than through the Google Maps API.
 
-You can add Google Maps API as a Leaflet layer with a [plugin](https://github.com/shramov/leaflet-plugins). But note that the map experience will not be perfect, because Leaflet will just act as a proxy to the Google Maps JS engine, so you won't get all the performance and usability benefits of using Leaflet when the Google layer is on.
+You can add the Google Maps API as a Leaflet layer with a [plugin](https://github.com/shramov/leaflet-plugins). But note that the map experience will not be perfect, because Leaflet will just act as a proxy to the Google Maps JS engine, so you won't get all the performance and usability benefits of using Leaflet when the Google layer is on.
 
 #### I want to roll my own OSM tile server for Leaflet, where do I start?
 
@@ -51,6 +58,8 @@ Check out [this excellent guide](http://switch2osm.org/serving-tiles/).
 There's a number of services that allow you to do this easily,
 notably [MapBox](https://www.mapbox.com/), [CartoDB](http://cartodb.com/) and [GIS Cloud](http://www.giscloud.com/).
 If you want to make tiles on your own, probably the easiest way is using [TileMill](https://www.mapbox.com/tilemill/).
+TileMill can export your map as a single [.mbtiles](https://www.mapbox.com/developers/mbtiles/) file, which can be copied to a webserver and accessed by Leaflet with [a small PHP script](https://github.com/infostreams/mbtiles-php).
+Alternatively, you can [extract](https://github.com/mapbox/mbutil) the tiled images from the .mbtiles database and place them directly on your webserver with absolutely no server-side dependencies.
 
 ## Commercial Use and Licensing
 
@@ -75,6 +84,10 @@ Make sure you conform to the terms of use of the tile images provider(s) that yo
 
 
 ## Features
+
+#### What's the best way to put the data I have on a Leaflet map?
+
+Check out [this awesome cheatsheet](https://github.com/tmcw/mapmakers-cheatsheet).
 
 #### Why is there still no feature X in Leaflet?
 

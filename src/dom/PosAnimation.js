@@ -2,8 +2,7 @@
  * L.PosAnimation is used by Leaflet internally for pan animations.
  */
 
-L.PosAnimation = L.Class.extend({
-	includes: L.Mixin.Events,
+L.PosAnimation = L.Evented.extend({
 
 	run: function (el, newPos, duration, easeLinearity) { // (HTMLElement, Point[, Number, Number])
 		this.stop();
@@ -20,9 +19,6 @@ L.PosAnimation = L.Class.extend({
 		L.DomEvent.on(el, L.DomUtil.TRANSITION_END, this._onTransitionEnd, this);
 		L.DomUtil.setPosition(el, newPos);
 
-		// toggle reflow, Chrome flickers for some reason if you don't do this
-		L.Util.falseFn(el.offsetWidth);
-
 		// there's no native way to track value updates of transitioned properties, so we imitate this
 		this._stepTimer = setInterval(L.bind(this._onStep, this), 50);
 	},
@@ -33,7 +29,12 @@ L.PosAnimation = L.Class.extend({
 		// if we just removed the transition property, the element would jump to its final position,
 		// so we need to make it stay at the current position
 
-		L.DomUtil.setPosition(this._el, this._getPos());
+                // Only setPosition if _getPos actually returns a valid position.
+		this._newPos = this._getPos();
+		if (this._newPos) {
+		    L.DomUtil.setPosition(this._el, this._newPos);
+		}
+
 		this._onTransitionEnd();
 		L.Util.falseFn(this._el.offsetWidth); // force reflow in case we are about to start a new animation
 	},

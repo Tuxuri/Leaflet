@@ -2,8 +2,7 @@
  * L.Draggable allows you to add dragging capabilities to any element. Supports mobile devices too.
  */
 
-L.Draggable = L.Class.extend({
-	includes: L.Mixin.Events,
+L.Draggable = L.Evented.extend({
 
 	statics: {
 		START: L.Browser.touch ? ['touchstart', 'mousedown'] : ['mousedown'],
@@ -29,9 +28,7 @@ L.Draggable = L.Class.extend({
 	enable: function () {
 		if (this._enabled) { return; }
 
-		for (var i = L.Draggable.START.length - 1; i >= 0; i--) {
-			L.DomEvent.on(this._dragStartTarget, L.Draggable.START[i], this._onDown, this);
-		}
+		L.DomEvent.on(this._dragStartTarget, L.Draggable.START.join(' '), this._onDown, this);
 
 		this._enabled = true;
 	},
@@ -39,9 +36,7 @@ L.Draggable = L.Class.extend({
 	disable: function () {
 		if (!this._enabled) { return; }
 
-		for (var i = L.Draggable.START.length - 1; i >= 0; i--) {
-			L.DomEvent.off(this._dragStartTarget, L.Draggable.START[i], this._onDown, this);
-		}
+		L.DomEvent.off(this._dragStartTarget, L.Draggable.START.join(' '), this._onDown, this);
 
 		this._enabled = false;
 		this._moved = false;
@@ -60,6 +55,8 @@ L.Draggable = L.Class.extend({
 		L.DomUtil.disableTextSelection();
 
 		if (this._moving) { return; }
+
+		this.fire('down');
 
 		var first = e.touches ? e.touches[0] : e;
 
@@ -82,6 +79,7 @@ L.Draggable = L.Class.extend({
 		    offset = newPoint.subtract(this._startPoint);
 
 		if (!offset.x && !offset.y) { return; }
+		if (L.Browser.touch && Math.abs(offset.x) + Math.abs(offset.y) < 3) { return; }
 
 		L.DomEvent.preventDefault(e);
 
@@ -91,9 +89,10 @@ L.Draggable = L.Class.extend({
 			this._moved = true;
 			this._startPos = L.DomUtil.getPosition(this._element).subtract(offset);
 
-			if (!L.Browser.touch) {
-				L.DomUtil.addClass(document.body, 'leaflet-dragging');
-			}
+			L.DomUtil.addClass(document.body, 'leaflet-dragging');
+
+			this._lastTarget = e.target || e.srcElement;
+			L.DomUtil.addClass(this._lastTarget, 'leaflet-drag-target');
 		}
 
 		this._newPos = this._startPos.add(offset);
@@ -110,24 +109,29 @@ L.Draggable = L.Class.extend({
 	},
 
 	_onUp: function () {
-		if (!L.Browser.touch) {
-			L.DomUtil.removeClass(document.body, 'leaflet-dragging');
+		L.DomUtil.removeClass(document.body, 'leaflet-dragging');
+
+		if (this._lastTarget) {
+			L.DomUtil.removeClass(this._lastTarget, 'leaflet-drag-target');
+			this._lastTarget = null;
 		}
 
 		for (var i in L.Draggable.MOVE) {
 			L.DomEvent
-			    .off(document, L.Draggable.MOVE[i], this._onMove)
-			    .off(document, L.Draggable.END[i], this._onUp);
+			    .off(document, L.Draggable.MOVE[i], this._onMove, this)
+			    .off(document, L.Draggable.END[i], this._onUp, this);
 		}
 
 		L.DomUtil.enableImageDrag();
 		L.DomUtil.enableTextSelection();
 
-		if (this._moved) {
+		if (this._moved && this._moving) {
 			// ensure drag is not fired after dragend
 			L.Util.cancelAnimFrame(this._animRequest);
 
-			this.fire('dragend');
+			this.fire('dragend', {
+				distance: this._newPos.distanceTo(this._startPos)
+			});
 		}
 
 		this._moving = false;
